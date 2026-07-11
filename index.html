@@ -51,30 +51,180 @@ button:hover {
 }
 
 .progress {
-    height: 18px;
+    height: 16px;
     background: #ddd;
     border-radius: 20px;
     overflow: hidden;
+    margin-top: 4px;
 }
 
 .bar {
     height: 100%;
     width: 0%;
-    background: #22c55e;
+    transition: width .2s ease;
+}
+
+.bar.kcal { background: #22c55e; }
+.bar.protein { background: #3b82f6; }
+.bar.fat { background: #f97316; }
+.bar.carbs { background: #a855f7; }
+
+.macro-row {
+    margin-top: 16px;
+}
+
+.macro-row-head {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+}
+
+.macro-label {
+    font-weight: bold;
 }
 
 .item {
     display:flex;
     justify-content:space-between;
+    align-items:center;
     padding:12px 0;
     border-bottom:1px solid #eee;
+    gap: 12px;
 }
 
-input {
+.item .info {
+    flex: 1;
+}
+
+.item small {
+    color: #777;
+    display: block;
+    margin-top: 2px;
+}
+
+.item .right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.remove-btn {
+    background: #fee2e2;
+    color: #b91c1c;
+    border: none;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.remove-btn:hover {
+    opacity: 1;
+    background: #fecaca;
+}
+
+input, select {
     padding:10px;
     margin:5px;
     border-radius:8px;
     border:1px solid #ccc;
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.plan-select {
+    margin-top: 8px;
+    margin-bottom: 4px;
+}
+
+.target-inputs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.target-inputs label {
+    font-size: 13px;
+    color: #555;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.target-inputs input {
+    width: 80px;
+    margin: 0;
+}
+
+.food-grid button small {
+    display: block;
+    font-weight: normal;
+    opacity: .8;
+    margin-top: 4px;
+}
+
+.bmi-inputs label {
+    font-size: 13px;
+    color: #555;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.bmi-inputs input {
+    width: 90px;
+    margin: 0;
+}
+
+.bmi-result {
+    margin-top: 14px;
+    padding: 14px;
+    border-radius: 10px;
+    background: #f5f7fb;
+}
+
+.bmi-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: bold;
+    color: white;
+}
+
+.bmi-badge.underweight { background: #3b82f6; }
+.bmi-badge.normal { background: #22c55e; }
+.bmi-badge.overweight { background: #f97316; }
+.bmi-badge.obese { background: #ef4444; }
+
+.schedule-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+    gap: 12px;
+}
+
+.schedule-day {
+    width: 46px;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.schedule-focus {
+    font-weight: bold;
+}
+
+.schedule-details {
+    color: #666;
+    font-size: 13px;
+    margin-top: 2px;
 }
 </style>
 
@@ -86,16 +236,52 @@ input {
 
 <div class="card">
 <h1>Adaptive Training Nutrition</h1>
-<p>Track calories based on your daily training goal.</p>
+<p>Track calories and macros against a plan-based daily target.</p>
 
-<h3>Daily Goal</h3>
-<h2>2500 kcal</h2>
+<h3>Plan</h3>
+<select id="planSelect" class="plan-select" onchange="onPlanChange()">
+    <option value="cutting">Cutting (deficit, high protein)</option>
+    <option value="maintenance" selected>Maintenance</option>
+    <option value="bulking">Bulking (surplus)</option>
+    <option value="custom">Custom</option>
+</select>
 
-<div class="progress">
-<div class="bar" id="bar"></div>
+<h3>Daily Targets</h3>
+<div class="target-inputs">
+    <label>Calories (kcal)
+        <input id="targetKcal" type="number" oninput="onTargetEdit(); update();">
+    </label>
+    <label>Protein (g)
+        <input id="targetProtein" type="number" oninput="onTargetEdit(); update();">
+    </label>
+    <label>Fat (g)
+        <input id="targetFat" type="number" oninput="onTargetEdit(); update();">
+    </label>
+    <label>Carbs (g)
+        <input id="targetCarbs" type="number" oninput="onTargetEdit(); update();">
+    </label>
 </div>
 
-<p id="progressText">0 / 2500 kcal</p>
+<div class="macro-row">
+    <div class="macro-row-head"><span class="macro-label">Calories</span><span id="kcalText">0 / 0 kcal</span></div>
+    <div class="progress"><div class="bar kcal" id="barKcal"></div></div>
+</div>
+
+<div class="macro-row">
+    <div class="macro-row-head"><span class="macro-label">Protein</span><span id="proteinText">0 / 0 g</span></div>
+    <div class="progress"><div class="bar protein" id="barProtein"></div></div>
+</div>
+
+<div class="macro-row">
+    <div class="macro-row-head"><span class="macro-label">Fat</span><span id="fatText">0 / 0 g</span></div>
+    <div class="progress"><div class="bar fat" id="barFat"></div></div>
+</div>
+
+<div class="macro-row">
+    <div class="macro-row-head"><span class="macro-label">Carbs</span><span id="carbsText">0 / 0 g</span></div>
+    <div class="progress"><div class="bar carbs" id="barCarbs"></div></div>
+</div>
+
 </div>
 
 
@@ -109,6 +295,9 @@ input {
 
 <input id="foodName" placeholder="Food name">
 <input id="foodCalories" type="number" placeholder="Calories">
+<input id="foodProtein" type="number" placeholder="Protein (g)">
+<input id="foodFat" type="number" placeholder="Fat (g)">
+<input id="foodCarbs" type="number" placeholder="Carbs (g)">
 
 <button onclick="addCustomFood()">Add Food</button>
 
@@ -124,26 +313,94 @@ input {
 </div>
 
 
+<div class="card">
+
+<h2>Training Plan</h2>
+<p>Hardcoded weekly split matched to your nutrition plan above.</p>
+
+<h3>Your Stats</h3>
+<div class="target-inputs bmi-inputs">
+    <label>Age
+        <input id="bmiAge" type="number" oninput="renderTrainingPlan()">
+    </label>
+    <label>Weight (kg)
+        <input id="bmiWeight" type="number" oninput="renderTrainingPlan()">
+    </label>
+    <label>Height (cm)
+        <input id="bmiHeight" type="number" oninput="renderTrainingPlan()">
+    </label>
+</div>
+
+<div class="bmi-result" id="bmiResult">
+    Enter your weight and height to see your BMI category.
+</div>
+
+<h3>Weekly Schedule</h3>
+<div id="trainingSchedule"></div>
+
+</div>
+
+
 </div>
 
 
 <script>
 
-const calorieGoal = 2500;
+// each plan defines a full target profile the user can select, then still edit by hand
+const plans = {
+    cutting:     { kcal: 1800, protein: 160, fat: 50, carbs: 150 },
+    maintenance: { kcal: 2500, protein: 130, fat: 80, carbs: 280 },
+    bulking:     { kcal: 3200, protein: 180, fat: 100, carbs: 400 },
+    custom:      { kcal: 2500, protein: 130, fat: 80, carbs: 280 }
+};
 
-let calories = 0;
+// hardcoded weekly training split per nutrition plan
+const trainingPlans = {
+    cutting: [
+        {day:"Mon", focus:"Full Body Strength", details:"3x8-10 compound lifts (squat, bench, row)"},
+        {day:"Tue", focus:"Cardio", details:"30 min steady-state (jog, bike, or row)"},
+        {day:"Wed", focus:"Rest / Mobility", details:"Light stretching, easy walk"},
+        {day:"Thu", focus:"Upper Body Strength", details:"3x10-12 push/pull supersets"},
+        {day:"Fri", focus:"HIIT", details:"20 min intervals (30s on / 30s off)"},
+        {day:"Sat", focus:"Lower Body Strength", details:"3x8-10 squats, lunges, deadlifts"},
+        {day:"Sun", focus:"Rest", details:"Full recovery"}
+    ],
+    maintenance: [
+        {day:"Mon", focus:"Full Body Strength", details:"3x10 compound lifts"},
+        {day:"Tue", focus:"Light Cardio", details:"20-30 min easy pace"},
+        {day:"Wed", focus:"Upper Body", details:"3x10 push/pull"},
+        {day:"Thu", focus:"Rest / Mobility", details:"Stretch, foam roll"},
+        {day:"Fri", focus:"Lower Body", details:"3x10 squats, lunges"},
+        {day:"Sat", focus:"Active Recovery", details:"Walk, swim, or easy bike"},
+        {day:"Sun", focus:"Rest", details:"Full recovery"}
+    ],
+    bulking: [
+        {day:"Mon", focus:"Chest & Triceps", details:"4x6-8 heavy compound + isolation"},
+        {day:"Tue", focus:"Back & Biceps", details:"4x6-8 heavy compound + isolation"},
+        {day:"Wed", focus:"Rest", details:"Full recovery, eat big"},
+        {day:"Thu", focus:"Legs", details:"4x6-8 squats, deadlifts, leg press"},
+        {day:"Fri", focus:"Shoulders & Arms", details:"4x8-10 press + isolation"},
+        {day:"Sat", focus:"Light Cardio", details:"15-20 min easy, just for heart health"},
+        {day:"Sun", focus:"Rest", details:"Full recovery"}
+    ]
+};
+// custom nutrition plan has no dedicated split, falls back to maintenance
+trainingPlans.custom = trainingPlans.maintenance;
+
+let totals = { kcal: 0, protein: 0, fat: 0, carbs: 0 };
 
 let selectedFoods = [];
+let nextEntryId = 1;
 
 let foods = [
-    {name:"Rice Bowl", calories:200},
-    {name:"Chicken Breast", calories:165},
-    {name:"Egg", calories:70},
-    {name:"Banana", calories:105},
-    {name:"Milk", calories:120},
-    {name:"Oats", calories:150},
-    {name:"Protein Shake", calories:130},
-    {name:"Peanut Butter", calories:190}
+    {name:"Rice Bowl", calories:200, protein:4, fat:0.5, carbs:44},
+    {name:"Chicken Breast", calories:165, protein:31, fat:3.6, carbs:0},
+    {name:"Egg", calories:70, protein:6, fat:5, carbs:0.5},
+    {name:"Banana", calories:105, protein:1.3, fat:0.4, carbs:27},
+    {name:"Milk", calories:120, protein:8, fat:5, carbs:12},
+    {name:"Oats", calories:150, protein:5, fat:3, carbs:27},
+    {name:"Protein Shake", calories:130, protein:25, fat:2, carbs:5},
+    {name:"Peanut Butter", calories:190, protein:8, fat:16, carbs:6}
 ];
 
 
@@ -158,7 +415,8 @@ function renderFoods(){
         const btn=document.createElement("button");
 
         btn.innerHTML=
-        `${food.name}<br>${food.calories} kcal`;
+        `${food.name}<br>${food.calories} kcal
+        <small>P ${food.protein}g · F ${food.fat}g · C ${food.carbs}g</small>`;
 
         btn.onclick=()=>{
             addFood(food);
@@ -174,9 +432,23 @@ function renderFoods(){
 
 function addFood(food){
 
-    calories += food.calories;
+    selectedFoods.push({
+        id: nextEntryId++,
+        name: food.name,
+        calories: food.calories,
+        protein: food.protein,
+        fat: food.fat,
+        carbs: food.carbs
+    });
 
-    selectedFoods.push(food);
+    update();
+
+}
+
+
+function removeFood(id){
+
+    selectedFoods = selectedFoods.filter(entry => entry.id !== id);
 
     update();
 
@@ -191,6 +463,15 @@ function addCustomFood(){
     const caloriesValue=
     Number(document.getElementById("foodCalories").value);
 
+    const proteinValue=
+    Number(document.getElementById("foodProtein").value) || 0;
+
+    const fatValue=
+    Number(document.getElementById("foodFat").value) || 0;
+
+    const carbsValue=
+    Number(document.getElementById("foodCarbs").value) || 0;
+
 
     if(!name || !caloriesValue)
         return;
@@ -198,7 +479,10 @@ function addCustomFood(){
 
     const food={
         name:name,
-        calories:caloriesValue
+        calories:caloriesValue,
+        protein:proteinValue,
+        fat:fatValue,
+        carbs:carbsValue
     };
 
 
@@ -208,26 +492,88 @@ function addCustomFood(){
 
     renderFoods();
 
+    document.getElementById("foodName").value="";
+    document.getElementById("foodCalories").value="";
+    document.getElementById("foodProtein").value="";
+    document.getElementById("foodFat").value="";
+    document.getElementById("foodCarbs").value="";
+
 }
 
 
+// when a plan is picked from the dropdown, load its targets into the editable fields
+function applyPlan(){
+
+    const plan = plans[document.getElementById("planSelect").value];
+
+    document.getElementById("targetKcal").value = plan.kcal;
+    document.getElementById("targetProtein").value = plan.protein;
+    document.getElementById("targetFat").value = plan.fat;
+    document.getElementById("targetCarbs").value = plan.carbs;
+
+    update();
+}
+
+function onPlanChange(){
+    applyPlan();
+    renderTrainingPlan();
+}
+
+// if the user hand-edits a target field, switch the dropdown to "Custom"
+// so it's clear the numbers no longer match a preset
+function onTargetEdit(){
+    document.getElementById("planSelect").value = "custom";
+}
+
+function getTargets(){
+    return {
+        kcal: Number(document.getElementById("targetKcal").value) || 0,
+        protein: Number(document.getElementById("targetProtein").value) || 0,
+        fat: Number(document.getElementById("targetFat").value) || 0,
+        carbs: Number(document.getElementById("targetCarbs").value) || 0
+    };
+}
+
+function pct(value, target){
+    if(!target) return 0;
+    return Math.min((value/target)*100, 100);
+}
 
 function update(){
 
-    document.getElementById("progressText")
-    .innerText=
-    `${calories} / ${calorieGoal} kcal`;
+    // totals are recomputed from the log every time, so removing an item is always accurate
+    totals = selectedFoods.reduce((sum, food) => {
+        sum.kcal += food.calories;
+        sum.protein += food.protein;
+        sum.fat += food.fat;
+        sum.carbs += food.carbs;
+        return sum;
+    }, { kcal: 0, protein: 0, fat: 0, carbs: 0 });
 
+    const targets = getTargets();
 
-    document.getElementById("bar")
-    .style.width=
-    Math.min((calories/calorieGoal)*100,100)+"%";
+    document.getElementById("kcalText").innerText =
+        `${Math.round(totals.kcal)} / ${targets.kcal} kcal`;
+    document.getElementById("proteinText").innerText =
+        `${Math.round(totals.protein)} / ${targets.protein} g`;
+    document.getElementById("fatText").innerText =
+        `${Math.round(totals.fat)} / ${targets.fat} g`;
+    document.getElementById("carbsText").innerText =
+        `${Math.round(totals.carbs)} / ${targets.carbs} g`;
+
+    document.getElementById("barKcal").style.width = pct(totals.kcal, targets.kcal) + "%";
+    document.getElementById("barProtein").style.width = pct(totals.protein, targets.protein) + "%";
+    document.getElementById("barFat").style.width = pct(totals.fat, targets.fat) + "%";
+    document.getElementById("barCarbs").style.width = pct(totals.carbs, targets.carbs) + "%";
 
 
     const intake=document.getElementById("intake");
 
     intake.innerHTML="";
 
+    if(selectedFoods.length === 0){
+        intake.innerHTML = "<p style='color:#777'>Nothing logged yet.</p>";
+    }
 
     selectedFoods.forEach(food=>{
 
@@ -236,8 +582,11 @@ function update(){
         div.className="item";
 
         div.innerHTML=
-        `<span>${food.name}</span>
-        <b>${food.calories} kcal</b>`;
+        `<div class="info">${food.name}<small>P ${food.protein}g · F ${food.fat}g · C ${food.carbs}g</small></div>
+        <div class="right">
+            <b>${food.calories} kcal</b>
+            <button class="remove-btn" onclick="removeFood(${food.id})">✕</button>
+        </div>`;
 
 
         intake.appendChild(div);
@@ -247,7 +596,69 @@ function update(){
 }
 
 
+function calcBMI(weightKg, heightCm){
+    const heightM = heightCm / 100;
+    return weightKg / (heightM * heightM);
+}
+
+function bmiCategory(bmi){
+    if(bmi < 18.5) return { label: "Underweight", cls: "underweight" };
+    if(bmi < 25)   return { label: "Normal", cls: "normal" };
+    if(bmi < 30)   return { label: "Overweight", cls: "overweight" };
+    return { label: "Obese", cls: "obese" };
+}
+
+// hardcoded tips layered on top of the training split, based on BMI category
+const bmiNotes = {
+    underweight: "Prioritize the strength days over the cardio ones, and don't skip meals around your target — recovery needs the extra fuel.",
+    normal: "This split is well balanced for your profile as written — no changes needed.",
+    overweight: "Consider adding one extra light cardio session on a rest day if energy allows.",
+    obese: "Favor low-impact cardio (walking, swimming, cycling) over running to protect your joints, and check with a doctor before starting a new program."
+};
+
+function renderTrainingPlan(){
+
+    const planKey = document.getElementById("planSelect").value;
+    const schedule = trainingPlans[planKey] || trainingPlans.maintenance;
+
+    const scheduleContainer = document.getElementById("trainingSchedule");
+    scheduleContainer.innerHTML = schedule.map(day => `
+        <div class="schedule-row">
+            <div class="schedule-day">${day.day}</div>
+            <div style="flex:1">
+                <div class="schedule-focus">${day.focus}</div>
+                <div class="schedule-details">${day.details}</div>
+            </div>
+        </div>
+    `).join("");
+
+    const age = Number(document.getElementById("bmiAge").value) || 0;
+    const weight = Number(document.getElementById("bmiWeight").value) || 0;
+    const height = Number(document.getElementById("bmiHeight").value) || 0;
+
+    const bmiResult = document.getElementById("bmiResult");
+
+    if(weight > 0 && height > 0){
+        const bmi = calcBMI(weight, height);
+        const category = bmiCategory(bmi);
+        const note = bmiNotes[category.cls];
+        const ageText = age > 0 ? ` at age ${age}` : "";
+
+        bmiResult.innerHTML =
+            `Your BMI${ageText} is <b>${bmi.toFixed(1)}</b> —
+            <span class="bmi-badge ${category.cls}">${category.label}</span>
+            <p style="margin:10px 0 0">${note}</p>`;
+    } else {
+        bmiResult.innerHTML = "Enter your weight and height to see your BMI category.";
+    }
+
+}
+
+
+applyPlan();
 renderFoods();
+update();
+renderTrainingPlan();
 
 </script>
 
